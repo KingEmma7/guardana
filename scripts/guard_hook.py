@@ -134,10 +134,7 @@ def _site_in_sync() -> None:
             )
 
 
-def _pushes_main(command: str) -> bool:
-    push = re.search(r"\bgit\s+push\b([^|;&]*)", command)
-    if push is None:
-        return False
+def _push_matches_main(push: re.Match[str]) -> bool:
     args = [arg for arg in push.group(1).split() if not arg.startswith("-")]
     if any(arg == "main" or arg.endswith(":main") for arg in args):
         return True
@@ -148,6 +145,13 @@ def _pushes_main(command: str) -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return True
     return branch == "main"
+
+
+def _pushes_main(command: str) -> bool:
+    # A compound command can push more than once; check every push.
+    return any(
+        _push_matches_main(push) for push in re.finditer(r"\bgit\s+push\b([^|;&]*)", command)
+    )
 
 
 def _guard_stage(command: str) -> None:
